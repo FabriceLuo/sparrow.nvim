@@ -74,27 +74,28 @@ function M.exec_repo_trans()
 end
 
 function M.setup(opts)
-	print("setup")
+  logger.info("setup sparrow with opts:%s", logger.to_json(opts))
+
+  vim.api.nvim_create_user_command("SparrowSyncBuffer", function(opts)
+    M.sync_cur_buf_file()
+  end, {
+    desc = "Sync current buffer file to current destination host.",
+  })
+
+
+  vim.api.nvim_create_user_command("SparrowSyncRepo", function(opts)
+    M.exec_repo_trans()
+  end, {
+    desc = "Sync all files of repo to current destination host.",
+  })
+
+  vim.api.nvim_create_user_command("SparrowShowBufferRule", function(opts)
+    M.with_rule(function ()
+      rule.show_buf_rule()
+    end)
+  end, {
+    desc = "Show current buffer rule.",
+  })
 end
 
-vim.api.nvim_create_user_command("SparrowSyncBuffer", function(opts)
-	M.sync_cur_buf_file()
-end, {
-	desc = "Sync current buffer file to current destination host.",
-})
-
-
-vim.api.nvim_create_user_command("SparrowSyncRepo", function(opts)
-  M.exec_repo_trans()
-end, {
-	desc = "Sync all files of repo to current destination host.",
-})
-
-vim.api.nvim_create_user_command("SparrowShowBufferRule", function(opts)
-  M.with_rule(function ()
-    rule.show_buf_rule()
-  end)
-end, {
-	desc = "Show current buffer rule.",
-})
-
+return M
