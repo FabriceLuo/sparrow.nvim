@@ -1,7 +1,4 @@
-local current_dir = debug.getinfo(1, "S").source:sub(2):match("(.*/)")
-package.path = current_dir .. "?.lua;" .. package.path
-
-local logger = require("logger")
+local logger = require("sparrow.logger")
 
 local M = {}
 
@@ -37,11 +34,9 @@ function M.exec_rsync(host, rule)
     local msg = string.format("rsync file(%s) success", src)
     vim.notify(msg, vim.log.levels.INFO)
   end
-
 end
 
-function M.exec_scp(host, rule)
-end
+function M.exec_scp(host, rule) end
 
 function M.exec(host, rule)
   M.exec_rsync(host, rule)

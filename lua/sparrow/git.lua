@@ -1,9 +1,6 @@
-local current_dir = debug.getinfo(1, "S").source:sub(2):match("(.*/)")
-package.path = current_dir .. "?.lua;" .. package.path
-
 local M = {}
 
-local logger = require("logger")
+local logger = require("sparrow.logger")
 
 function M.gen_buf_git_root()
   local file_path = vim.api.nvim_buf_get_name(0)
@@ -21,7 +18,6 @@ function M.gen_buf_git_root()
 
   return lines[1]
 end
-
 
 function M.get_buf_git_root()
   local buf_git_root = vim.b.sparrow_git_root

@@ -1,10 +1,6 @@
-local current_dir = debug.getinfo(1, "S").source:sub(2):match("(.*/)")
-package.path = current_dir .. "?.lua;" .. package.path
-
-
-local git = require("git")
-local json = require("json")
-local logger = require("logger")
+local git = require("sparrow.git")
+local json = require("sparrow.json")
+local logger = require("sparrow.logger")
 
 local M = {}
 local Patterns = {}
@@ -23,7 +19,7 @@ function M.get_config_path()
 end
 
 function M.load_patterns()
-	-- load patterns from config file
+  -- load patterns from config file
   -- [[
   -- {
   --    "type": "SCP|HCI|SCC",
@@ -39,27 +35,36 @@ function M.load_patterns()
   -- }
   -- ]]
   local config_path = M.get_config_path()
-	Config = json.read_file(config_path)
+  if config_path == nil then
+    logger.warn("config file is not found")
+    Patterns = {}
+    return
+  end
+
+  logger.debug("config path:%s", config_path)
+  if vim.fn.filereadable(config_path) == 0 then
+    logger.warn("config file(%s) is not readable", config_path)
+    Patterns = {}
+    return
+  end
+  Config = json.read_file(config_path)
 
   local patterns = Config["patterns"]
-  table.sort(patterns,
-    function(a, b)
-      return a["priority"] < b["priority"]
-    end
-  )
+  table.sort(patterns, function(a, b)
+    return a["priority"] < b["priority"]
+  end)
   Patterns = patterns
   logger.info("Load config(%s), patterns:%s", logger.to_json(Config), logger.to_json(Patterns))
 end
 
 function M.save_patterns()
-	-- save patterns to config file
+  -- save patterns to config file
 end
 
-function M.add_pattern(rule)
-end
+function M.add_pattern(rule) end
 
 function M.select_pattern(patterns, callback)
-	-- select one pattern by candidate patterns
+  -- select one pattern by candidate patterns
 end
 
 function M.get_relative_path(file_path)
@@ -96,7 +101,6 @@ function M.is_file_match_directory_pattern(file_path, pattern)
     logger.debug("string(%s) is not match pattern(%s)", s, p)
     return false
   end
-
 end
 
 function M.is_file_match_pattern(file_path, pattern)
@@ -122,31 +126,33 @@ function M.get_candidate_patterns(file_path)
 end
 
 function M.get_file_pattern(file_path)
-	-- generate one rule for file
-  local rule = M.gen_rule_by_name(file_path)
+  -- generate one rule for file
+  --[[ local rule = M.gen_rule_by_name(file_path)
   if rule then
     return rule
   end
 
-  return M.gen_rule_by_input(file_path)
+  return M.gen_rule_by_input(file_path) ]]
 end
 
 function M.gen_pattern(file_path, callback)
-	-- get one perfect pattern for file
+  -- get one perfect pattern for file
   local patterns = M.get_candidate_patterns(file_path)
   logger.debug("file(%s) candidate patterns:%s", file_path, logger.to_json(patterns))
-
 
   local pattern = nil
   if not patterns or #patterns == 0 then
     logger.info("file(%s) matched pattern is not found", file_path)
     pattern = M.get_file_pattern(file_path)
+    if pattern == nil then
+      return
+    end
     logger.info("file(%s) pattern(%s) is generated", file_path, logger.to_json(pattern))
     M.add_pattern(pattern)
   else
     if #patterns > 1 then
       logger.debug("found multi file(%s) patterns:%s", file_path, logger.to_json(patterns))
-      M.select_pattern(patterns, function (p)
+      M.select_pattern(patterns, function(p)
         M.add_pattern(p)
         callback(p)
       end)
@@ -160,15 +166,15 @@ function M.gen_pattern(file_path, callback)
 end
 
 function M.gen_pattern_by_input(file_path)
-	-- generate one pattern by user input
+  -- generate one pattern by user input
 end
 
 function M.gen_patttern_by_name(file_path)
-	-- generate one pattern by file name match
+  -- generate one pattern by file name match
 end
 
 function M.set_buf_rule(rule)
-    vim.b.sparrow_rule = rule
+  vim.b.sparrow_rule = rule
 end
 
 function M.get_buf_rule()
@@ -179,13 +185,18 @@ function M.gen_buf_rule(callback)
   local file_path = vim.api.nvim_buf_get_name(0)
   logger.debug("gen rule for buf file(%s)", file_path)
 
-  M.gen_pattern(file_path, function (pattern)
+  M.gen_pattern(file_path, function(pattern)
     if not pattern then
       logger.info("file(%s) pattern is not found", file_path)
       return nil
     end
     local rule = M.gen_rule_by_pattern_and_file(pattern, file_path)
-    logger.info("file(%s) rule(%s) is generated from pattern(%s)", file_path, logger.to_json(rule), logger.to_json(pattern))
+    logger.info(
+      "file(%s) rule(%s) is generated from pattern(%s)",
+      file_path,
+      logger.to_json(rule),
+      logger.to_json(pattern)
+    )
     if not rule then
       return nil
     end
@@ -194,7 +205,7 @@ function M.gen_buf_rule(callback)
 end
 
 function M.show_buf_rule()
-	-- show rule of current buffer
+  -- show rule of current buffer
   local rule = M.get_buf_rule()
   local lines = {}
   if not rule then
@@ -243,7 +254,6 @@ function M.show_buf_rule()
     border = "rounded",
     focusable = false,
   })
-
 end
 
 function M.get_file_pattern_src(git_root, pattern)
@@ -262,7 +272,7 @@ function M.gen_rule_by_pattern(pattern)
   local git_root = git.get_buf_git_root()
   local abs_src = vim.fn.fnamemodify(pattern["src"], ":p")
 
-	-- gen trans rule from pattern
+  -- gen trans rule from pattern
   local rule = {
     git_root = git_root,
     platform = Config["platform"],
@@ -302,7 +312,6 @@ function M.gen_rule_by_pattern_and_file(pattern, file_path)
   return rule
 end
 
-
 function M.gen_rules_by_patterns()
   local rules = {}
 
@@ -324,6 +333,8 @@ function M.get_rules_by_patterns()
   return Rules
 end
 
-M.load_patterns()
+function M.init()
+  M.load_patterns()
+end
 
 return M
