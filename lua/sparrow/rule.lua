@@ -177,12 +177,17 @@ function M.set_buf_rule(rule)
   vim.b.sparrow_rule = rule
 end
 
-function M.get_buf_rule()
-  return vim.b.sparrow_rule
+function M.get_buf_rule(buf)
+  return vim.b[buf].sparrow_rule
 end
 
-function M.gen_buf_rule(callback)
-  local file_path = vim.api.nvim_buf_get_name(0)
+function M.gen_buf_rule(buf, callback)
+  local file_path = vim.api.nvim_buf_get_name(buf)
+  if file_path == "" then
+    logger.debug("buf(%s) is not file", buf)
+    return
+  end
+
   logger.debug("gen rule for buf file(%s)", file_path)
 
   M.gen_pattern(file_path, function(pattern)
@@ -204,34 +209,34 @@ function M.gen_buf_rule(callback)
   end)
 end
 
-function M.show_buf_rule()
+function M.show_buf_rule(buf)
   -- show rule of current buffer
-  local rule = M.get_buf_rule()
+  local rule = M.get_buf_rule(buf)
   local lines = {}
   if not rule then
     local file_path = vim.api.nvim_buf_get_name(0)
 
     lines = {
-      "Buf" .. file_path,
+      "Buffer Path:\t" .. file_path,
       "Rule for file is not found",
     }
   else
     lines = {
-      "     Origin:    " .. rule["ori"],
-      "        Src:    " .. rule["src"],
-      "        Dst:    " .. rule["dst"],
-      "   Platform:    " .. rule["platform"],
-      "       Type:    " .. rule["type"],
-      "Pattern src:    " .. rule["pattern_src"],
-      "Pattern dst:    " .. rule["pattern_dst"],
-      "   Git root:    " .. rule["git_root"],
+      "Buffer Path:\t" .. rule["ori"],
+      "        Src:\t" .. rule["src"],
+      "        Dst:\t" .. rule["dst"],
+      "   Platform:\t" .. rule["platform"],
+      "       Type:\t" .. rule["type"],
+      "Pattern src:\t" .. rule["pattern_src"],
+      "Pattern dst:\t" .. rule["pattern_dst"],
+      "   Git root:\t" .. rule["git_root"],
     }
   end
 
   -- show rule in float window
-  local buf = vim.api.nvim_create_buf(false, true)
-  vim.api.nvim_buf_set_lines(buf, 0, -1, false, lines)
-  vim.api.nvim_buf_set_keymap(buf, "n", "<Esc>", "<cmd>bd!<CR>", {
+  local rule_buf = vim.api.nvim_create_buf(false, true)
+  vim.api.nvim_buf_set_lines(rule_buf, 0, -1, false, lines)
+  vim.api.nvim_buf_set_keymap(rule_buf, "n", "<Esc>", "<cmd>bd!<CR>", {
     noremap = true,
     silent = true,
   })

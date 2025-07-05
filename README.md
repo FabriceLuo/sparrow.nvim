@@ -3,13 +3,13 @@ The vim client of the sparrow service, used to control file synchronization in v
 
 # Roadmap
 - [ ] Target host selection for synchronization
-  - [ ] Reuse autossh host configuration, no need to add host configuration manually
+  - [x] Reuse autossh host configuration, no need to add host configuration manually
   - [x] When the target host is not specified, select in pop-up window
   - [x] When selecting in pop-up window, support preview of target host details
   - [x] When the target host is specified, synchronize and reuse the specified host
-  - [ ] View the current synchronized target host in floating window
+  - [x] View the current synchronized target host in floating window
   - [ ] Specify the default synchronization host for the project. After specifying, restart nvim without selecting the target host
-  - [ ] Re-specify the target host
+  - [x] Re-specify the target host
   - [ ] Perform compatibility check when specifying the target host to ensure the correctness of the target host
   - [ ] Synchronize the host without password/enter the password only once
 - [ ] File synchronization
@@ -30,7 +30,7 @@ The vim client of the sparrow service, used to control file synchronization in v
 - [ ] Support multiple synchronization methods
   - [x] Project-level full/incremental synchronization
   - [x] Current buffer file synchronization
-  - [ ] All buffer file synchronization
+  - [x] All buffer file synchronization
   - [ ] Synchronize based on git changes
     - [ ] Synchronize changed files
     - [ ] Synchronize difference files with other branches/Commits

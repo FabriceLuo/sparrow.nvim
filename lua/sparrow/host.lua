@@ -138,6 +138,52 @@ function M.select_host(callback)
     :find()
 end
 
+function M.show_cur_host()
+  local cur_host = M.get_cur_host()
+  local lines = {}
+  if not cur_host then
+    lines = {
+      "Sync destination is not specified!",
+    }
+  else
+    lines = {
+      "    Host:\t" .. cur_host["host"],
+      "    Port:\t" .. cur_host["port"],
+      "    Type:\t" .. (cur_host["type"] or ""),
+      "UserName:\t" .. cur_host["username"],
+      "Password:\t" .. cur_host["password"],
+    }
+  end
+
+  -- show host in float window
+  local buf = vim.api.nvim_create_buf(false, true)
+  vim.api.nvim_buf_set_name(buf, "Current Sync Destination")
+  vim.api.nvim_buf_set_lines(buf, 0, -1, false, lines)
+  vim.api.nvim_buf_set_keymap(buf, "n", "<Esc>", "<cmd>bd!<CR>", {
+    noremap = true,
+    silent = true,
+  })
+
+  -- set highlight for host
+
+  local width = 100
+  local height = #lines
+  local row = math.floor((vim.o.lines - height) / 2)
+  local col = math.floor((vim.o.columns - width) / 2)
+
+  -- open the float window
+  vim.api.nvim_open_win(buf, true, {
+    relative = "editor",
+    row = row,
+    col = col,
+    width = width,
+    height = height,
+    style = "minimal",
+    border = "rounded",
+    focusable = false,
+  })
+end
+
 function M.init()
   M.load_hosts()
 end
