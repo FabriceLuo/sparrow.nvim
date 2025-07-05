@@ -1,55 +1,14 @@
-# Sparrow.vim
-The vim client of the sparrow service, used to control file synchronization in vim.
+# Sparrow.vim (WIP)
+File synchronization tool under nvim.
 
-# Roadmap
-- [ ] Target host selection for synchronization
-  - [x] Reuse autossh host configuration, no need to add host configuration manually
-  - [x] When the target host is not specified, select in pop-up window
-  - [x] When selecting in pop-up window, support preview of target host details
-  - [x] When the target host is specified, synchronize and reuse the specified host
-  - [x] View the current synchronized target host in floating window
-  - [ ] Specify the default synchronization host for the project. After specifying, restart nvim without selecting the target host
-  - [x] Re-specify the target host
-  - [ ] Perform compatibility check when specifying the target host to ensure the correctness of the target host
-  - [ ] Synchronize the host without password/enter the password only once
-- [ ] File synchronization
-  - [ ] Support configuration of different file transfer tools.
-    - [ ] SCP
-    - [x] RSync
-    - [ ] SFTP
-  - [ ] Support multiple version control tools.
-    - [ ] Git
-    - [ ] Subversion
-  - [ ] Project supports multiple synchronization rules
-    - [x] File-level mapping
-    - [x] Directory-level mapping
-    - [x] Automatically generate file mapping based on directory prefix
-    - [ ] Regular rule mapping
-    - [ ] Automatic matching based on file name
-    - [ ] Manual generation + fuzzy target location selection
-- [ ] Support multiple synchronization methods
-  - [x] Project-level full/incremental synchronization
-  - [x] Current buffer file synchronization
-  - [x] All buffer file synchronization
-  - [ ] Synchronize based on git changes
-    - [ ] Synchronize changed files
-    - [ ] Synchronize difference files with other branches/Commits
-- [ ] Support different synchronization directions
-  - [ ] Upload, synchronize files from local to target host
-  - [ ] Download, synchronize files from target host to local
-- [ ] Synchronize file backup/restore
-  - [ ] Target host backup
-  - [ ] Target host restore
-  - [ ] Local backup
-  - [ ] Local restore
-  - [ ] Synchronize history
-- [ ] Synchronize pre-command, synchronization rule level
-- [ ] Synchronize post-command, synchronization rule level
-- [x] Synchronization result notification, integrated with nvim-notify
-- [ ] Synchronization status bar display, integrated with common nvim status bar plugins
-- [ ] Synchronization rule view
-  - [ ] Project synchronization rules
-  - [x] Current buffer synchronization rules
-- [ ] Difference comparison
-  - [ ] Project full difference comparison, support file selection and syntax highlighting
-  - [ ] Compare the current buffer with the target host location file, support syntax highlighting
+# Features:
+- Project-level synchronization configuration file, different projects can be configured with different rules.
+- Fuzzy selection of target host, support for one project corresponding to multiple host synchronization requirements; also supports fixed target host.
+- One project supports the configuration of multiple synchronization rules, including file rules, directory rules, automatic rule generation, etc.
+- Backup/restore of synchronization target location files.
+- Compare the differences between local and target location files, support syntax highlighting.
+- Target host check to avoid incorrect synchronization.
+- Support multiple transmission tools, including SCP, RSync, FTP, etc.
+- Support file synchronization based on version control tools, such as branch difference synchronization, etc.
+- Multi-directional synchronization, such as upload and download.
+- Definition of pre- and post-synchronization commands at the synchronization rule level
