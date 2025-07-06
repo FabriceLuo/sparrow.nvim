@@ -135,7 +135,7 @@ function M.get_file_pattern(file_path)
   return M.gen_rule_by_input(file_path) ]]
 end
 
-function M.gen_pattern(file_path, callback)
+function M.gen_pattern(file_path, pattern_opts, callback)
   -- get one perfect pattern for file
   local patterns = M.get_candidate_patterns(file_path)
   logger.debug("file(%s) candidate patterns:%s", file_path, logger.to_json(patterns))
@@ -143,6 +143,14 @@ function M.gen_pattern(file_path, callback)
   local pattern = nil
   if not patterns or #patterns == 0 then
     logger.info("file(%s) matched pattern is not found", file_path)
+
+    if pattern_opts and pattern_opts.no_new_pattern then
+      if pattern_opts.no_new_pattern_callback then
+        pattern_opts.no_new_pattern_callback()
+      end
+      return
+    end
+
     pattern = M.get_file_pattern(file_path)
     if pattern == nil then
       return
@@ -152,6 +160,12 @@ function M.gen_pattern(file_path, callback)
   else
     if #patterns > 1 then
       logger.debug("found multi file(%s) patterns:%s", file_path, logger.to_json(patterns))
+      if pattern_opts and pattern_opts.no_multi_pattern then
+        if pattern_opts.no_multi_pattern_callback then
+          pattern_opts.no_multi_pattern_callback()
+        end
+        return
+      end
       M.select_pattern(patterns, function(p)
         M.add_pattern(p)
         callback(p)
@@ -181,7 +195,7 @@ function M.get_buf_rule(buf)
   return vim.b[buf].sparrow_rule
 end
 
-function M.gen_buf_rule(buf, callback)
+function M.gen_buf_rule(buf, rule_opts, callback)
   local file_path = vim.api.nvim_buf_get_name(buf)
   if file_path == "" then
     logger.debug("buf(%s) is not file", buf)
@@ -190,7 +204,7 @@ function M.gen_buf_rule(buf, callback)
 
   logger.debug("gen rule for buf file(%s)", file_path)
 
-  M.gen_pattern(file_path, function(pattern)
+  M.gen_pattern(file_path, rule_opts, function(pattern)
     if not pattern then
       logger.info("file(%s) pattern is not found", file_path)
       return nil
@@ -336,6 +350,14 @@ function M.get_rules_by_patterns()
   end
 
   return Rules
+end
+
+function M.configured()
+  if #Patterns > 0 then
+    return true
+  else
+    return false
+  end
 end
 
 function M.init()
