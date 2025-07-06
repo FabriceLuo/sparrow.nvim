@@ -8,6 +8,7 @@ end, {
 })
 
 local config = require("sparrow.config")
+local diff = require("sparrow.diff")
 local host = require("sparrow.host")
 local rule = require("sparrow.rule")
 local trans = require("sparrow.trans")
@@ -47,13 +48,38 @@ end
 function M.exec_buf_trans(buf)
   local cur_host = host.get_cur_host()
   local cur_rule = rule.get_buf_rule(buf)
-  trans.exec(cur_host, cur_rule)
+  trans.upload(cur_host, cur_rule)
+end
+
+function M.with_host_and_buf_rule(buf, rule_opts, callback)
+  M.with_host(function()
+    M.with_rule(buf, rule_opts, callback)
+  end)
 end
 
 function M.sync_buf_file(buf, rule_opts)
-  M.with_host(function()
-    M.with_rule(buf, rule_opts, function()
-      M.exec_buf_trans(buf)
+  M.with_host_and_buf_rule(buf, rule_opts, function()
+    M.exec_buf_trans(buf)
+  end)
+end
+
+function M.download_buf(buf, rule_opts)
+  M.with_host_and_buf_rule(buf, rule_opts, function()
+    local cur_host = host.get_cur_host()
+    local buf_rule = rule.get_buf_rule(buf)
+
+    trans.download(cur_host, buf_rule, function(file_path)
+      local buf_path = vim.api.nvim_buf_get_name(buf)
+
+      assert(file_path == buf_path)
+
+      if buf_path ~= "" and vim.fn.filereadable(buf_path) == 1 then
+        vim.api.nvim_buf_call(buf, function()
+          vim.cmd("edit!")
+          local msg = string.format("Buffer reload from file(%s)", buf_path)
+          vim.notify(msg, vim.log.levels.INFO)
+        end)
+      end
     end)
   end)
 end
@@ -78,7 +104,7 @@ function M.exec_repo_trans()
 
     for i = 1, #rules do
       logger.info("exec trans rule(%s) to destination(%s)", logger.to_json(rules[i]), logger.to_json(cur_host))
-      trans.exec(cur_host, rules[i])
+      trans.upload(cur_host, rules[i])
     end
   end)
 end
@@ -142,16 +168,40 @@ function M.set_cur_host_with_confirm()
   end
 end
 
+function M.diff_buf_file()
+  M.with_host_and_buf_rule(function() end)
+end
+
+function M.one_rule_opts()
+  return {
+    no_new_pattern = true,
+    no_new_pattern_callback = function()
+      vim.notify("No matching rules found, please perform synchronization manually first!")
+    end,
+    no_multi_pattern = true,
+    no_multi_pattern_callback = function()
+      vim.notify("There are no multiple matching rules, please perform manual synchronization to select first!")
+    end,
+  }
+end
+
 function M.setup(opts)
   logger.info("setup sparrow with opts:%s", logger.to_json(opts))
 
   host.init()
   rule.init()
 
-  vim.api.nvim_create_user_command("SparrowSyncBuffer", function(opts)
+  vim.api.nvim_create_user_command("SparrowUploadBuffer", function(opts)
     M.sync_buf_file(0)
   end, {
     desc = "Sync current buffer file to current destination host.",
+  })
+
+  vim.api.nvim_create_user_command("SparrowDownloadBuffer", function(opts)
+    local rule_opts = M.one_rule_opts()
+    M.download_buf(0, rule_opts)
+  end, {
+    desc = "Sync current destination host to current buffer file.",
   })
 
   vim.api.nvim_create_user_command("SparrowSyncAllBuffer", function(opts)
@@ -222,19 +272,18 @@ function M.setup(opts)
   vim.api.nvim_create_autocmd("BufWritePost", {
     callback = function(ev)
       if config.get_sync_when_save() then
-        M.sync_buf_file(ev.buf, {
-          no_new_pattern = true,
-          no_new_pattern_callback = function()
-            vim.notify("No matching rules found, please perform synchronization manually first!")
-          end,
-          no_multi_pattern = true,
-          no_multi_pattern_callback = function()
-            vim.notify("There are no multiple matching rules, please perform manual synchronization to select first!")
-          end,
-        })
+        local rule_opts = M.one_rule_opts()
+        M.sync_buf_file(ev.buf, rule_opts)
       end
       return false
     end,
+  })
+  vim.api.nvim_create_user_command("SparrowBufferDiff", function(opts)
+    M.with_host_and_buf_rule(0, {}, function()
+      diff.diff_buf(0)
+    end)
+  end, {
+    desc = "Diff buffer file and remote.",
   })
 end
 
