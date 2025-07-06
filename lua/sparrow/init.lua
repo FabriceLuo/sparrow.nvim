@@ -9,6 +9,7 @@ end, {
 
 local config = require("sparrow.config")
 local diff = require("sparrow.diff")
+local git = require("sparrow.git")
 local host = require("sparrow.host")
 local rule = require("sparrow.rule")
 local trans = require("sparrow.trans")
@@ -185,6 +186,27 @@ function M.one_rule_opts()
   }
 end
 
+function M.upload_change_files_against_index()
+  local files = git.get_files_against_cur_index()
+  if files == nil then
+    logger.error("no change file is found")
+    vim.notify("Changed files against current index are not found", vim.log.levels.WARN)
+    return
+  end
+
+  M.with_host(function()
+    local cur_host = host.get_cur_host()
+
+    local rule_opts = M.one_rule_opts()
+    for _, f in ipairs(files) do
+      local file_path = f.path
+      rule.gen_file_rule(file_path, rule_opts, function(cur_rule)
+        trans.upload(cur_host, cur_rule)
+      end)
+    end
+  end)
+end
+
 function M.setup(opts)
   logger.info("setup sparrow with opts:%s", logger.to_json(opts))
 
@@ -284,6 +306,12 @@ function M.setup(opts)
     end)
   end, {
     desc = "Diff buffer file and remote.",
+  })
+
+  vim.api.nvim_create_user_command("SparrowUploadIndexChanges", function(opts)
+    M.upload_change_files_against_index()
+  end, {
+    desc = "Upload files against index to destination host.",
   })
 end
 
