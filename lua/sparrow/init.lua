@@ -7,6 +7,7 @@ end, {
   desc = "Show sparrow log.",
 })
 
+local config = require("sparrow.config")
 local host = require("sparrow.host")
 local rule = require("sparrow.rule")
 local trans = require("sparrow.trans")
@@ -28,10 +29,10 @@ function M.with_host(callback)
   end
 end
 
-function M.with_rule(buf, callback)
+function M.with_rule(buf, rule_opts, callback)
   local cur_rule = rule.get_buf_rule(buf)
   if cur_rule == nil then
-    rule.gen_buf_rule(buf, function(buf_rule)
+    rule.gen_buf_rule(buf, rule_opts, function(buf_rule)
       if buf_rule == nil then
         return
       end
@@ -49,9 +50,9 @@ function M.exec_buf_trans(buf)
   trans.exec(cur_host, cur_rule)
 end
 
-function M.sync_buf_file(buf)
+function M.sync_buf_file(buf, rule_opts)
   M.with_host(function()
-    M.with_rule(buf, function()
+    M.with_rule(buf, rule_opts, function()
       M.exec_buf_trans(buf)
     end)
   end)
@@ -91,18 +92,37 @@ function M.set_cur_host()
   end)
 end
 
+function M.enable_auto_sync_when_save()
+  if host.get_cur_host() == nil then
+    vim.notify("Auto sync when saving enable failed, current host is not set!")
+    return
+  end
+
+  if not rule.configured() == nil then
+    vim.notify("Auto sync when saving enable failed, repo has no .sparrow.cfg rules!")
+    return
+  end
+
+  config.set_sync_when_save(true)
+end
+
+function M.disable_auto_sync_when_save()
+  config.set_sync_when_save(false)
+  vim.notify("Auto sync when saving disabled!")
+end
+
 function M.set_cur_host_with_confirm()
   local cur_host = host.get_cur_host()
 
   if cur_host ~= nil then
     local msg = string.format(
       [[
-    Current sync destination host: 
-            Host: %s 
-            Port: %s 
-        UserName: %s 
-        Password: %s 
-            Type: %s 
+    Current sync destination host:
+            Host: %s
+            Port: %s
+        UserName: %s
+        Password: %s
+            Type: %s
     Do you change it?
     ]],
       cur_host.host,
@@ -166,6 +186,55 @@ function M.setup(opts)
     end)
   end, {
     desc = "Specify/Respecify current destination host.",
+  })
+
+  vim.api.nvim_create_user_command("SparrowSaveSyncEnable", function(opts)
+    M.enable_auto_sync_when_save()
+  end, {
+    desc = "Enable Auto sync buffer file when saving.",
+  })
+
+  vim.api.nvim_create_user_command("SparrowSaveSyncDisable", function(opts)
+    M.disable_auto_sync_when_save()
+  end, {
+    desc = "Disable Auto sync buffer file when saving.",
+  })
+
+  vim.api.nvim_create_user_command("SparrowSaveSyncToggle", function(opts)
+    if config.get_sync_when_save() then
+      M.disable_auto_sync_when_save()
+    else
+      M.enable_auto_sync_when_save()
+    end
+  end, {
+    desc = "Disable Auto sync buffer file when saving.",
+  })
+  vim.api.nvim_create_user_command("SparrowSaveSyncStatus", function(opts)
+    if config.get_sync_when_save() then
+      vim.notify("Auto sync when saving is enabled!")
+    else
+      vim.notify("Auto sync when saving is disabled!")
+    end
+  end, {
+    desc = "Show auto sync status when saving.",
+  })
+
+  vim.api.nvim_create_autocmd("BufWritePost", {
+    callback = function(ev)
+      if config.get_sync_when_save() then
+        M.sync_buf_file(ev.buf, {
+          no_new_pattern = true,
+          no_new_pattern_callback = function()
+            vim.notify("No matching rules found, please perform synchronization manually first!")
+          end,
+          no_multi_pattern = true,
+          no_multi_pattern_callback = function()
+            vim.notify("There are no multiple matching rules, please perform manual synchronization to select first!")
+          end,
+        })
+      end
+      return false
+    end,
   })
 end
 

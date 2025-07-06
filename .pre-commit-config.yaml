@@ -1,0 +1,13 @@
+repos:
+-   repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v5.0.0  # Use the ref you want to point at
+    hooks:
+    - id: trailing-whitespace
+    - id: check-added-large-files
+    - id: mixed-line-ending
+    - id: no-commit-to-branch
+
+- repo: https://github.com/JohnnyMorganz/StyLua
+  rev: v2.1.0
+  hooks:
+    - id: stylua-system # stylua or stylua-system / stylua-github
