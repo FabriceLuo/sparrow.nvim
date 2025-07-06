@@ -195,13 +195,7 @@ function M.get_buf_rule(buf)
   return vim.b[buf].sparrow_rule
 end
 
-function M.gen_buf_rule(buf, rule_opts, callback)
-  local file_path = vim.api.nvim_buf_get_name(buf)
-  if file_path == "" then
-    logger.debug("buf(%s) is not file", buf)
-    return
-  end
-
+function M.gen_file_rule(file_path, rule_opts, callback)
   logger.debug("gen rule for buf file(%s)", file_path)
 
   M.gen_pattern(file_path, rule_opts, function(pattern)
@@ -221,6 +215,15 @@ function M.gen_buf_rule(buf, rule_opts, callback)
     end
     callback(rule)
   end)
+end
+
+function M.gen_buf_rule(buf, rule_opts, callback)
+  local file_path = vim.api.nvim_buf_get_name(buf)
+  if file_path == "" then
+    logger.debug("buf(%s) is not file", buf)
+    return
+  end
+  return M.gen_file_rule(file_path, rule_opts, callback)
 end
 
 function M.show_buf_rule(buf)
