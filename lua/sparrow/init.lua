@@ -25,6 +25,7 @@ function M.with_host(callback)
   end
   local cur_host = host.get_cur_host()
   if cur_host == nil then
+    M.auto_refresh_hosts()
     host.select_host(init_host)
   else
     callback()
@@ -111,12 +112,26 @@ function M.exec_repo_trans()
 end
 
 function M.set_cur_host()
+  M.auto_refresh_hosts()
+
   host.select_host(function(selected_host)
     if selected_host == nil then
       return
     end
     host.set_cur_host(selected_host)
   end)
+end
+
+function M.save_cur_host()
+  local cur_host = host.get_cur_host()
+  if cur_host == nil then
+    logger.warn("cur host is not found, ignore save")
+    vim.notify("Cur host is not found, please run:SparrowSetCurHost first!", vim.log.levels.WARN)
+    return
+  end
+
+  host.save_cur_hosts()
+  vim.notify("Cur hosts is saved.")
 end
 
 function M.enable_auto_sync_when_save()
@@ -208,9 +223,27 @@ function M.upload_change_files_against_index()
   end)
 end
 
+function M.auto_refresh_hosts()
+  if config.get_auto_refresh_host() then
+    logger.debug("auto refresh host is enabled, reload hosts")
+    host.load_hosts()
+  end
+end
+
+function M.enable_auto_refresh_hosts()
+  config.set_auto_refresh_host(true)
+  vim.notify("Auto reresh host list enabled.")
+end
+
+function M.disable_auto_refresh_hosts()
+  config.set_auto_refresh_host(false)
+  vim.notify("Auto reresh host list disabled.")
+end
+
 function M.setup(opts)
   logger.info("setup sparrow with opts:%s", logger.to_json(opts))
 
+  config.init()
   host.init()
   rule.init()
 
@@ -247,18 +280,62 @@ function M.setup(opts)
     desc = "Show current buffer rule.",
   })
 
-  vim.api.nvim_create_user_command("SparrowShowCurHost", function(opts)
+  vim.api.nvim_create_user_command("SparrowRereshHosts", function(opts)
+    host.load_hosts()
+    vim.notify("Reresh host list finished.")
+  end, {
+    desc = "Reresh host list.",
+  })
+
+  vim.api.nvim_create_user_command("SparrowAutoRefreshHostsEnable", function(opts)
+    M.enable_auto_refresh_hosts()
+  end, {
+    desc = "Enable auto refresh hosts.",
+  })
+
+  vim.api.nvim_create_user_command("SparrowAutoRefreshHostsDisable", function(opts)
+    M.disable_auto_refresh_hosts()
+  end, {
+    desc = "Disable auto refresh hosts.",
+  })
+
+  vim.api.nvim_create_user_command("SparrowAutoRefreshHostsToggle", function(opts)
+    if config.get_auto_refresh_host() then
+      M.disable_auto_refresh_hosts()
+    else
+      M.enable_auto_refresh_hosts()
+    end
+  end, {
+    desc = "Auto refresh hosts toggle.",
+  })
+  vim.api.nvim_create_user_command("SparrowAutoRefreshHostsStatus", function(opts)
+    if config.get_auto_refresh_host() then
+      vim.notify("Auto reresh host list enabled.")
+    else
+      vim.notify("Auto reresh host list disabled.")
+    end
+  end, {
+    desc = "Auto refresh hosts status",
+  })
+
+  vim.api.nvim_create_user_command("SparrowCurHostShow", function(opts)
     host.show_cur_host()
   end, {
     desc = "Show current destination host.",
   })
 
-  vim.api.nvim_create_user_command("SparrowSetCurHost", function(opts)
+  vim.api.nvim_create_user_command("SparrowCurHostSet", function(opts)
     vim.schedule(function()
       M.set_cur_host_with_confirm()
     end)
   end, {
     desc = "Specify/Respecify current destination host.",
+  })
+
+  vim.api.nvim_create_user_command("SparrowCurHostSave", function(opts)
+    M.save_cur_host()
+  end, {
+    desc = "Save current destination host to sparrow config file.",
   })
 
   vim.api.nvim_create_user_command("SparrowSaveUploadEnable", function(opts)

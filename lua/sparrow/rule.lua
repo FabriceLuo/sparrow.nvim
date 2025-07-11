@@ -1,22 +1,12 @@
+local config = require("sparrow.config")
 local git = require("sparrow.git")
-local json = require("sparrow.json")
 local logger = require("sparrow.logger")
 
-local M = {}
+local M = {
+  config = {},
+}
 local Patterns = {}
-local Config = {}
 local Rules = nil
-local config_name = ".sparrow.cfg"
-
-function M.get_config_path()
-  local repo_root = git.get_buf_git_root()
-  logger.debug("buffer git root:%s", repo_root)
-  if repo_root == nil then
-    return nil
-  end
-  local config_path = repo_root .. "/" .. config_name
-  return config_path
-end
 
 function M.load_patterns()
   -- load patterns from config file
@@ -34,27 +24,15 @@ function M.load_patterns()
   --    ]
   -- }
   -- ]]
-  local config_path = M.get_config_path()
-  if config_path == nil then
-    logger.warn("config file is not found")
-    Patterns = {}
-    return
-  end
+  local cfg = config.load()
+  local patterns = cfg["patterns"] or {}
 
-  logger.debug("config path:%s", config_path)
-  if vim.fn.filereadable(config_path) == 0 then
-    logger.warn("config file(%s) is not readable", config_path)
-    Patterns = {}
-    return
-  end
-  Config = json.read_file(config_path)
-
-  local patterns = Config["patterns"]
   table.sort(patterns, function(a, b)
     return a["priority"] < b["priority"]
   end)
+
   Patterns = patterns
-  logger.info("Load config(%s), patterns:%s", logger.to_json(Config), logger.to_json(Patterns))
+  logger.info("Load config(%s), patterns:%s", logger.to_json(cfg), logger.to_json(Patterns))
 end
 
 function M.save_patterns()
@@ -291,6 +269,7 @@ function M.get_directory_pattern_src(git_root, pattern)
 end
 
 function M.gen_rule_by_pattern(pattern)
+  local cfg = config.load()
   -- gen real paths
   local git_root = git.get_buf_git_root()
   local src = vim.fs.joinpath(git_root, pattern["src"])
@@ -299,7 +278,7 @@ function M.gen_rule_by_pattern(pattern)
   -- gen trans rule from pattern
   local rule = {
     git_root = git_root,
-    platform = Config["platform"],
+    platform = cfg["platform"],
     type = pattern["type"],
     pattern_src = pattern["src"],
     pattern_dst = pattern["dst"],
