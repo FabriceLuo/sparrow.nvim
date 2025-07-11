@@ -1,33 +1,33 @@
-local M = {}
+local M = {
+  cur_hosts = nil,
+  host_list = {},
+  --[[
+  M.host_list Format:
+  [
+      {
+          "username": "",
+          "password": "",
+          "host": "",
+          "port": "",
+          "type": "",
+      },
+      {
+          "username": "",
+          "password": "",
+          "host": "",
+          "port": "",
+          "type": "",
+      },
+  ]
+
+  --]]
+}
 
 local config = require("sparrow.config")
 local json = require("sparrow.json")
 local logger = require("sparrow.logger")
 
 local config_path = config.get_autossh_path()
-local CurHost = nil
-
---[[
-HostList Format:
-[
-    {
-        "username": "",
-        "password": "",
-        "host": "",
-        "port": "",
-        "type": "",
-    },
-    {
-        "username": "",
-        "password": "",
-        "host": "",
-        "port": "",
-        "type": "",
-    },
-]
-
---]]
-local HostList = {}
 
 -- telescope requires
 local finders = require("telescope.finders")
@@ -38,11 +38,11 @@ local action_state = require("telescope.actions.state")
 local actions = require("telescope.actions")
 
 function M.get_cur_host()
-  return CurHost
+  return M.cur_hosts
 end
 
 function M.set_cur_host(dst)
-  CurHost = dst
+  M.cur_hosts = dst
 end
 
 function M.decode_autossh_config_hosts(autossh_config)
@@ -77,19 +77,41 @@ function M.encode_autossh_config_hosts()
   -- TODO
 end
 
+function M.load_cur_hosts()
+  local cfg = config.load()
+
+  if config["cur_hosts"] ~= nil then
+    logger.info("load cur hosts(%s) from config", logger.to_json(cfg["cur_hosts"]))
+  end
+
+  M.cur_hosts = cfg["cur_hosts"]
+end
+
+function M.save_cur_hosts()
+  local cur_hosts = M.cur_hosts
+  if cur_hosts == nil then
+    logger.info("save cur hosts(%s) to config", logger.to_json(cur_hosts))
+  end
+
+  local cfg = config.load()
+  cfg["cur_hosts"] = cur_hosts
+
+  config.save(cfg)
+end
+
 function M.load_hosts()
   if vim.fn.filereadable(config_path) == 0 then
-    HostList = {}
+    M.host_list = {}
     logger.warn("config file(%s) is not readable", config_path)
     return
   end
   local autossh_config = json.read_file(config_path)
-  HostList = M.decode_autossh_config_hosts(autossh_config)
-  logger.info("Host list(%s) from autossh", logger.to_json(HostList))
+  M.host_list = M.decode_autossh_config_hosts(autossh_config)
+  logger.info("Host list(%s) from autossh", logger.to_json(M.host_list))
 end
 
 function M.save_hosts()
-  json.write_file(config_path, HostList)
+  json.write_file(config_path, M.host_list)
 end
 
 function M.select_host(callback)
@@ -97,7 +119,7 @@ function M.select_host(callback)
     .new({}, {
       prompt_title = "Select Target Host",
       finder = finders.new_table({
-        results = HostList,
+        results = M.host_list,
         entry_maker = function(entry)
           return {
             value = entry,
@@ -186,6 +208,7 @@ end
 
 function M.init()
   M.load_hosts()
+  M.load_cur_hosts()
 end
 
 function M.input_host() end
