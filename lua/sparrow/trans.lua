@@ -8,23 +8,22 @@ function M.local_to_remote(host, src, dst, callback)
   local username = host.username
   local password = host.password
 
-  local rsh = "--rsh=" .. '"' .. "ssh -p " .. port .. '"'
-  local destination = username .. "@" .. ip .. ":" .. vim.fn.shellescape(dst)
+  local source = vim.fn.shellescape(src)
+  local destination = string.format([[%s@%s:%s]], username, ip, vim.fn.shellescape(dst))
 
-  local command = {
-    "rsync",
-    "-r",
-    "-l",
-    rsh,
-    vim.fn.shellescape(src),
-    destination,
-  }
+  local command = string.format(
+    [[env SSHPASS="%s" rsync -r -l --rsh="sshpass -e ssh -p %s -o StrictHostKeyChecking=no" %s %s]],
+    password,
+    port,
+    source,
+    destination
+  )
 
-  logger.info("exec rsync command(%s)", logger.to_json(command))
+  logger.info("exec rsync command(%s)", command)
 
-  local output = vim.fn.system(vim.fn.join(command, " "))
+  local output = vim.fn.system(command)
   if vim.v.shell_error ~= 0 then
-    logger.error("run command(%s) failed, output:(%s)", logger.to_json(command), string.gsub(output, "\n", " "))
+    logger.error("run command(%s) failed, output:(%s)", command, string.gsub(output, "\n", " "))
     callback(false)
     return false
   else
@@ -39,23 +38,22 @@ function M.remote_to_local(host, src, dst, callback)
   local username = host.username
   local password = host.password
 
-  local rsh = "--rsh=" .. '"' .. "ssh -p " .. port .. '"'
-  local source = username .. "@" .. ip .. ":" .. vim.fn.shellescape(src)
+  local source = string.format([[%s@%s:%s]], username, ip, vim.fn.shellescape(src))
+  local destination = vim.fn.shellescape(dst)
 
-  local command = {
-    "rsync",
-    "-r",
-    "-l",
-    rsh,
+  local command = string.format(
+    [[env SSHPASS="%s" rsync -r -l --rsh="sshpass -e ssh -p %s -o StrictHostKeyChecking=no" %s %s]],
+    password,
+    port,
     source,
-    vim.fn.shellescape(dst),
-  }
+    destination
+  )
 
-  logger.info("exec rsync command(%s)", logger.to_json(command))
+  logger.info("exec rsync command(%s)", command)
 
-  local output = vim.fn.system(vim.fn.join(command, " "))
+  local output = vim.fn.system(command)
   if vim.v.shell_error ~= 0 then
-    logger.error("run command(%s) failed, output:(%s)", logger.to_json(command), string.gsub(output, "\n", " "))
+    logger.error("run command(%s) failed, output:(%s)", command, string.gsub(output, "\n", " "))
     if callback ~= nil then
       callback(false)
     end

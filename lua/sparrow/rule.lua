@@ -94,8 +94,9 @@ function M.is_file_match_directory_pattern(file_path, pattern)
   end
   logger.debug("check file(%s) and dir pattern(%s) match", relative_path, logger.to_json(pattern))
   local s = relative_path
-  local p = "^" .. pattern["src"]
-  if string.match(s, p) then
+  local p = pattern["src"]
+  logger.debug("source(%s) pattern(%s)", s, p)
+  if string.sub(s, 1, #p) then
     return true
   else
     logger.debug("string(%s) is not match pattern(%s)", s, p)
@@ -266,7 +267,7 @@ function M.show_buf_rule(buf)
   local col = math.floor((vim.o.columns - width) / 2)
 
   -- open the float window
-  vim.api.nvim_open_win(buf, true, {
+  vim.api.nvim_open_win(rule_buf, true, {
     relative = "editor",
     row = row,
     col = col,
@@ -292,7 +293,8 @@ end
 function M.gen_rule_by_pattern(pattern)
   -- gen real paths
   local git_root = git.get_buf_git_root()
-  local abs_src = vim.fn.fnamemodify(pattern["src"], ":p")
+  local src = vim.fs.joinpath(git_root, pattern["src"])
+  local abs_src = vim.fn.fnamemodify(src, ":p")
 
   -- gen trans rule from pattern
   local rule = {
@@ -319,7 +321,7 @@ function M.gen_rule_by_pattern_and_file(pattern, file_path)
   -- gen src, dst, ori according to file_path and pattern
   local git_root = git.get_buf_git_root()
   local pattern_abs_src = vim.fn.fnamemodify(git_root .. "/" .. pattern["src"], ":p")
-  local file_to_src = string.gsub(file_path, "^" .. pattern_abs_src, "")
+  local file_to_src = string.gsub(file_path, "^" .. vim.pesc(pattern_abs_src), "")
   local dst = pattern["dst"] .. "/" .. file_to_src
 
   logger.debug("git root(%s), abs_src:%s, file_to_src:%s, dst:%s", git_root, pattern_abs_src, file_to_src, dst)

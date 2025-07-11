@@ -131,6 +131,7 @@ function M.enable_auto_sync_when_save()
   end
 
   config.set_sync_when_save(true)
+  vim.notify("Auto upload when saving enabled")
 end
 
 function M.disable_auto_sync_when_save()
@@ -153,10 +154,10 @@ function M.set_cur_host_with_confirm()
     Do you change it?
     ]],
       cur_host.host,
-      cur_host.Port,
-      cur_host.UserName,
-      cur_host.Password,
-      cur_host.Type
+      cur_host.port,
+      cur_host.userName,
+      cur_host.password,
+      cur_host.type
     )
     vim.ui.select({ "Yes", "No" }, { prompt = msg }, function(choice)
       if choice == "No" then
@@ -216,30 +217,30 @@ function M.setup(opts)
   vim.api.nvim_create_user_command("SparrowUploadBuffer", function(opts)
     M.sync_buf_file(0)
   end, {
-    desc = "Sync current buffer file to current destination host.",
+    desc = "Upload current buffer file to current destination host.",
   })
 
   vim.api.nvim_create_user_command("SparrowDownloadBuffer", function(opts)
     local rule_opts = M.one_rule_opts()
     M.download_buf(0, rule_opts)
   end, {
-    desc = "Sync current destination host to current buffer file.",
+    desc = "Upload current destination host to current buffer file.",
   })
 
-  vim.api.nvim_create_user_command("SparrowSyncAllBuffer", function(opts)
+  vim.api.nvim_create_user_command("SparrowUploadAllBuffer", function(opts)
     M.sync_all_buf_file()
   end, {
-    desc = "Sync all buffers file to current destination host.",
+    desc = "Upload all buffers file to current destination host.",
   })
 
-  vim.api.nvim_create_user_command("SparrowSyncRepo", function(opts)
+  vim.api.nvim_create_user_command("SparrowUploadRepo", function(opts)
     M.exec_repo_trans()
   end, {
-    desc = "Sync all files of repo to current destination host.",
+    desc = "Upload all files of repo to current destination host.",
   })
 
   vim.api.nvim_create_user_command("SparrowShowBufferRule", function(opts)
-    M.with_rule(function()
+    M.with_rule(0, {}, function()
       rule.show_buf_rule(0)
     end)
   end, {
@@ -260,19 +261,19 @@ function M.setup(opts)
     desc = "Specify/Respecify current destination host.",
   })
 
-  vim.api.nvim_create_user_command("SparrowSaveSyncEnable", function(opts)
+  vim.api.nvim_create_user_command("SparrowSaveUploadEnable", function(opts)
     M.enable_auto_sync_when_save()
   end, {
     desc = "Enable Auto sync buffer file when saving.",
   })
 
-  vim.api.nvim_create_user_command("SparrowSaveSyncDisable", function(opts)
+  vim.api.nvim_create_user_command("SparrowSaveUploadDisable", function(opts)
     M.disable_auto_sync_when_save()
   end, {
     desc = "Disable Auto sync buffer file when saving.",
   })
 
-  vim.api.nvim_create_user_command("SparrowSaveSyncToggle", function(opts)
+  vim.api.nvim_create_user_command("SparrowSaveUploadToggle", function(opts)
     if config.get_sync_when_save() then
       M.disable_auto_sync_when_save()
     else
@@ -281,7 +282,7 @@ function M.setup(opts)
   end, {
     desc = "Disable Auto sync buffer file when saving.",
   })
-  vim.api.nvim_create_user_command("SparrowSaveSyncStatus", function(opts)
+  vim.api.nvim_create_user_command("SparrowSaveUploadStatus", function(opts)
     if config.get_sync_when_save() then
       vim.notify("Auto sync when saving is enabled!")
     else
