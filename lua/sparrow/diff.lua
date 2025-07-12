@@ -6,7 +6,7 @@ local rule = require("sparrow.rule")
 local trans = require("sparrow.trans")
 
 function M.diff_buf(bufnr)
-  local cur_host = host.get_cur_host()
+  local cur_host = host.get_only_one_cur_host()
   local buf_rule = rule.get_buf_rule(bufnr)
 
   logger.debug("diff buf, host:%s, rule:%s", logger.to_json(cur_host), logger.to_json(buf_rule))
@@ -53,9 +53,7 @@ function M.read_file_content(file_path)
   return table.concat(lines, "\n")
 end
 
-function M.diff_buf_and_temp(bufnr, temp_file, change_callback)
-  local local_buf = bufnr
-
+function M.diff_buf_and_temp(_, temp_file, change_callback)
   local old_spilit = vim.o.splitright
 
   vim.o.splitright = true

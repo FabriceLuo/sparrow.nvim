@@ -33,6 +33,15 @@ function M.get_buf_git_root()
   return vim.b.sparrow_git_root
 end
 
+function M.get_buf_git_name()
+  local buf_git_root = M.get_buf_git_root()
+  if buf_git_root == nil then
+    logger.error("buf git root is not found")
+    return nil
+  end
+  return vim.fn.fnamemodify(buf_git_root, ":t:r")
+end
+
 function M.get_files_against_cur_index()
   local buf_git_root = M.get_buf_git_root()
   if buf_git_root == nil then

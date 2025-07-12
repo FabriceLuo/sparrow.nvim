@@ -35,6 +35,10 @@ function M.to_json(t)
   return vim.fn.json_encode(t)
 end
 
+function M.printable(t)
+  return string.gsub(t, "\n", " ")
+end
+
 function M.clear()
   log_lines = {}
 end
@@ -52,7 +56,7 @@ function M.show()
     silent = true,
   })
 
-  local win = vim.api.nvim_open_win(buf, true, {
+  vim.api.nvim_open_win(buf, true, {
     relative = "editor",
     width = math.floor(vim.o.columns * 0.8),
     height = math.floor(vim.o.lines * 0.6),

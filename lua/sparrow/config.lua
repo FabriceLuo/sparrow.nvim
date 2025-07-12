@@ -3,7 +3,7 @@ local json = require("sparrow.json")
 local logger = require("sparrow.logger")
 
 local M = {
-  sync_when_save = false,
+  upload_when_save = false,
   auto_refresh_host = false,
   config_name = ".sparrow.cfg",
   autossh_config_path = "~/.autossh/autossh_db.conf",
@@ -69,15 +69,15 @@ function M.get_autossh_path()
   return vim.fn.fnamemodify(M.autossh_config_path, ":p")
 end
 
-function M.set_sync_when_save(sync_when_save)
-  local old_sync_when_save = M.sync_when_save
-  M.sync_when_save = sync_when_save
+function M.set_upload_when_save(sync_when_save)
+  local old_upload_when_save = M.upload_when_save
+  M.upload_when_save = sync_when_save
 
-  return old_sync_when_save
+  return old_upload_when_save
 end
 
-function M.get_sync_when_save()
-  return M.sync_when_save
+function M.get_upload_when_save()
+  return M.upload_when_save
 end
 
 function M.set_auto_refresh_host(auto_refresh_host)
@@ -89,6 +89,10 @@ end
 
 function M.get_auto_refresh_host()
   return M.auto_refresh_host
+end
+
+function M.get_host_tmux_config_path()
+  return M.config["host_tmux_config_path"]
 end
 
 function M.init()

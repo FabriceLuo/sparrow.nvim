@@ -37,12 +37,29 @@ local conf = require("telescope.config").values
 local action_state = require("telescope.actions.state")
 local actions = require("telescope.actions")
 
-function M.get_cur_host()
+function M.get_cur_hosts()
   return M.cur_hosts
 end
 
-function M.set_cur_host(dst)
-  M.cur_hosts = dst
+function M.get_only_one_cur_host()
+  local cur_hosts = M.get_cur_hosts()
+  if #cur_hosts > 1 then
+    logger.error("cur hosts is more than 1, cur hosts:%s", logger.to_json(cur_hosts))
+    local msg = string.format("Only one cur host is permitted. cur hosts count:%s", #cur_hosts)
+    vim.notify(msg, vim.log.levels.ERROR)
+    return nil
+  elseif #cur_hosts == 0 then
+    logger.error("cur hosts is not found")
+    local msg = string.format("Cur hosts is not set")
+    vim.notify(msg, vim.log.levels.ERROR)
+  else
+    return cur_hosts[1]
+  end
+  return nil
+end
+
+function M.set_cur_hosts(cur_hosts)
+  M.cur_hosts = cur_hosts
 end
 
 function M.decode_autossh_config_hosts(autossh_config)
@@ -114,7 +131,7 @@ function M.save_hosts()
   json.write_file(config_path, M.host_list)
 end
 
-function M.select_host(callback)
+function M.select_hosts(callback)
   pickers
     .new({}, {
       prompt_title = "Select Target Host",
@@ -130,7 +147,7 @@ function M.select_host(callback)
       }),
       previewer = previewers.new_buffer_previewer({
         title = "Host details",
-        define_preview = function(self, entry, status)
+        define_preview = function(self, entry, _)
           local value = entry.value
           local type = entry.type or ""
           local lines = {
@@ -144,14 +161,15 @@ function M.select_host(callback)
         end,
       }),
       sorter = conf.generic_sorter(),
-      attach_mappings = function(prompt_bufnr, map)
+      attach_mappings = function(prompt_bufnr, _)
         actions.select_default:replace(function()
           actions.close(prompt_bufnr)
           local selection = action_state.get_selected_entry()
           logger.debug("selection:%s", logger.to_json(selection))
           local cur_host = selection.value
           if callback then
-            callback(cur_host)
+            -- FIXME: support multi hosts
+            callback({ [1] = cur_host })
           end
         end)
         return true
@@ -160,21 +178,22 @@ function M.select_host(callback)
     :find()
 end
 
-function M.show_cur_host()
-  local cur_host = M.get_cur_host()
+function M.show_cur_hosts()
+  local cur_hosts = M.get_cur_hosts()
   local lines = {}
-  if not cur_host then
+  if not cur_hosts then
     lines = {
       "Sync destination is not specified!",
     }
   else
-    lines = {
-      "    Host:\t" .. cur_host["host"],
-      "    Port:\t" .. cur_host["port"],
-      "    Type:\t" .. (cur_host["type"] or ""),
-      "UserName:\t" .. cur_host["username"],
-      "Password:\t" .. cur_host["password"],
-    }
+    for i, cur_host in ipairs(cur_hosts) do
+      table.insert(lines, string.format("------------Host %s-------------", i))
+      table.insert(lines, "    Host:\t" .. cur_host["host"])
+      table.insert(lines, "    Port:\t" .. cur_host["port"])
+      table.insert(lines, "    Type:\t" .. (cur_host["type"] or ""))
+      table.insert(lines, "UserName:\t" .. cur_host["username"])
+      table.insert(lines, "Password:\t" .. cur_host["password"])
+    end
   end
 
   -- show host in float window
