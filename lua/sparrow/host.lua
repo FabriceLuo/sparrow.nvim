@@ -41,8 +41,7 @@ function M.get_cur_hosts()
   return M.cur_hosts
 end
 
-function M.get_only_one_cur_host()
-  local cur_hosts = M.get_cur_hosts()
+function M.get_only_one_cur_host(cur_hosts)
   if #cur_hosts > 1 then
     logger.error("cur hosts is more than 1, cur hosts:%s", logger.to_json(cur_hosts))
     local msg = string.format("Only one cur host is permitted. cur hosts count:%s", #cur_hosts)
@@ -75,6 +74,8 @@ function M.decode_autossh_config_hosts(autossh_config)
 	}
   --]]
   local node_records = autossh_config["NodeRecords"] or {}
+  logger.debug("node records:%s", logger.to_json(node_records))
+
   local hosts = {}
   for k, v in pairs(node_records) do
     local ks = vim.split(k, "[@:]")
@@ -123,6 +124,8 @@ function M.load_hosts()
     return
   end
   local autossh_config = json.read_file(config_path)
+  logger.debug("autossh config:%s", logger.to_json(autossh_config))
+
   M.host_list = M.decode_autossh_config_hosts(autossh_config)
   logger.info("Host list(%s) from autossh", logger.to_json(M.host_list))
 end

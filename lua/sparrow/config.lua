@@ -5,7 +5,7 @@ local logger = require("sparrow.logger")
 local M = {
   upload_when_save = false,
   auto_refresh_host = false,
-  config_name = ".sparrow.cfg",
+  config_name = ".sparrow.json",
   autossh_config_path = "~/.autossh/autossh_db.conf",
   config_path = nil,
   config = nil,
@@ -93,6 +93,10 @@ end
 
 function M.get_host_tmux_config_path()
   return M.config["host_tmux_config_path"]
+end
+
+function M.get_commands()
+  return M.config["commands"]
 end
 
 function M.init()

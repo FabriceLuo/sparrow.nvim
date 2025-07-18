@@ -71,10 +71,10 @@ function M.is_file_match_directory_pattern(file_path, pattern)
     return false
   end
   logger.debug("check file(%s) and dir pattern(%s) match", relative_path, logger.to_json(pattern))
-  local s = relative_path
   local p = pattern["src"]
+  local s = string.sub(relative_path, 1, #p)
   logger.debug("source(%s) pattern(%s)", s, p)
-  if string.sub(s, 1, #p) then
+  if p == s then
     return true
   else
     logger.debug("string(%s) is not match pattern(%s)", s, p)
@@ -166,12 +166,12 @@ function M.gen_patttern_by_name(file_path)
   -- generate one pattern by file name match
 end
 
-function M.set_buf_rule(rule)
-  vim.b.sparrow_rule = rule
+function M.set_buf_rule(bufnr, rule)
+  vim.b[bufnr].sparrow_rule = rule
 end
 
-function M.get_buf_rule(buf)
-  return vim.b[buf].sparrow_rule
+function M.get_buf_rule(bufnr)
+  return vim.b[bufnr].sparrow_rule
 end
 
 function M.gen_file_rule(file_path, rule_opts, callback)
@@ -311,6 +311,7 @@ function M.gen_rule_by_pattern_and_file(pattern, file_path)
   rule["ori"] = ori
   rule["src"] = src
   rule["dst"] = dst
+  rule["pattern"] = pattern
 
   return rule
 end

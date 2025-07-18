@@ -1,0 +1,100 @@
+{
+  "host_tmux_config_path": "/home/fabrice/.sparrow_tmux.conf",
+  "platform": "Debian",
+  "version": "1.0.0",
+  "type": "Linux",
+  "commands": [
+    {
+      "name": "create-remote-makefile-touch-post",
+      "cmdline": "touch /home/fabrice/code/sparrow_test/makefile.post",
+      "run_location": "remote",
+      "description": "create makefile touch file"
+    },
+    {
+      "name": "create-local-makefile-touch",
+      "cmdline": "touch ./makefile.upload",
+      "run_location": "local",
+      "description": "create local makefile touch file"
+    }
+  ],
+  "patterns": [
+    {
+      "priority": 1,
+      "dst": "/home/fabrice/code/sparrow_test/makefile",
+      "src": "./makefile",
+      "type": "directory",
+      "pre_upload_commands": [
+        {
+          "name": "create-makefile-dir",
+          "cmdline": "mkdir -p /home/fabrice/code/sparrow_test/makefile",
+          "run_location": "remote",
+          "description": "create makefile dir on remote"
+        },
+        {
+          "name": "create-remote-makefile-touch-pre",
+          "cmdline": "touch /home/fabrice/code/sparrow_test/makefile.pre",
+          "run_location": "remote",
+          "description": "create makefile touch file"
+        }
+      ],
+      "post_upload_commands": [
+        {
+          "name": "create-remote-makefile-touch-post",
+          "cmdline": "touch /home/fabrice/code/sparrow_test/makefile.post",
+          "run_location": "remote",
+          "description": "create makefile touch file"
+        },
+        {
+          "name": "create-local-makefile-touch",
+          "cmdline": "touch ./makefile.upload",
+          "run_location": "local",
+          "description": "create local makefile touch file"
+        }
+      ]
+    },
+    {
+      "priority": 1,
+      "dst": "/home/fabrice/code/sparrow_test/base.yaml",
+      "src": "./base.yaml",
+      "type": "directory",
+      "pre_upload_commands": [
+        {
+          "name": "create-test-dir",
+          "cmdline": "mkdir -p /home/fabrice/code/sparrow_test",
+          "run_location": "remote",
+          "description": "create test dir on remote"
+        }
+      ],
+      "post_upload_commands": [
+        {
+          "name": "create-test-touch",
+          "cmdline": "touch /home/fabrice/code/sparrow_test/test.created",
+          "run_location": "remote",
+          "description": "create test touch file"
+        }
+      ]
+    },
+    {
+      "priority": 1,
+      "dst": "/home/fabrice/code/sparrow_test/shell",
+      "src": "./shell",
+      "type": "directory",
+      "pre_upload_commands": [
+        {
+          "name": "create-shell-dir",
+          "cmdline": "mkdir -p /home/fabrice/code/sparrow_test/shell",
+          "run_location": "remote",
+          "description": "create shell dir on remote"
+        }
+      ],
+      "post_upload_commands": [
+        {
+          "name": "create-shell-touch",
+          "cmdline": "touch /home/fabrice/code/sparrow_test/shell.created",
+          "run_location": "remote",
+          "description": "create shell touch file"
+        }
+      ]
+    }
+  ]
+}

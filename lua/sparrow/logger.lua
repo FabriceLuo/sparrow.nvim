@@ -8,6 +8,7 @@ function M.log(level, msg, ...)
   local full_msg = string.format(msg, ...)
   local line =
     string.format("%s [%s] %s:%d %s", os.date("%Y-%m-%d %H:%M:%S"), level, info.short_src, info.currentline, full_msg)
+  line = M.printable(line)
   table.insert(log_lines, line)
 end
 
