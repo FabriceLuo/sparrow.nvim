@@ -166,12 +166,12 @@ function M.gen_patttern_by_name(file_path)
   -- generate one pattern by file name match
 end
 
-function M.set_buf_rule(rule)
-  vim.b.sparrow_rule = rule
+function M.set_buf_rule(bufnr, rule)
+  vim.b[bufnr].sparrow_rule = rule
 end
 
-function M.get_buf_rule(buf)
-  return vim.b[buf].sparrow_rule
+function M.get_buf_rule(bufnr)
+  return vim.b[bufnr].sparrow_rule
 end
 
 function M.gen_file_rule(file_path, rule_opts, callback)

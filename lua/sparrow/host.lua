@@ -41,8 +41,7 @@ function M.get_cur_hosts()
   return M.cur_hosts
 end
 
-function M.get_only_one_cur_host()
-  local cur_hosts = M.get_cur_hosts()
+function M.get_only_one_cur_host(cur_hosts)
   if #cur_hosts > 1 then
     logger.error("cur hosts is more than 1, cur hosts:%s", logger.to_json(cur_hosts))
     local msg = string.format("Only one cur host is permitted. cur hosts count:%s", #cur_hosts)

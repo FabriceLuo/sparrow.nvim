@@ -1,0 +1,44 @@
+{
+  "host_tmux_config_path": "~/.tmux.conf",
+  "platform": "MySQL",
+  "version": "1.0.0",
+  "type": "test",
+  "patterns": [
+    {
+      "priority": 1,
+      "dst": "/home/fabrice/code/sparrow/makefile",
+      "src": "./makefile",
+      "type": "directory",
+      "pre-upload-commands": [
+        {
+          "name": "stop service",
+          "command": "",
+          "run_host": "local",
+          "description": ""
+        }
+      ],
+      "post-upload-commands": [
+        {
+          "name": "restart service",
+          "command": "",
+          "run_host": "remote",
+          "description": ""
+        }
+      ]
+    }
+  ],
+  "cur_hosts": [
+    {
+      "host": "192.168.110.254",
+      "port": "22",
+      "password": "xxxxxx",
+      "username": "fabrice"
+    },
+    {
+      "host": "172.17.0.1",
+      "port": "22",
+      "password": "xxxxxxxx",
+      "username": "fabrice"
+    }
+  ]
+}
