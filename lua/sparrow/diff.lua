@@ -5,8 +5,8 @@ local logger = require("sparrow.logger")
 local rule = require("sparrow.rule")
 local trans = require("sparrow.trans")
 
-function M.diff_buf(bufnr)
-  local cur_host = host.get_only_one_cur_host()
+function M.diff_buf(bufnr, cur_hosts)
+  local cur_host = host.get_only_one_cur_host(cur_hosts)
   local buf_rule = rule.get_buf_rule(bufnr)
 
   logger.debug("diff buf, host:%s, rule:%s", logger.to_json(cur_host), logger.to_json(buf_rule))

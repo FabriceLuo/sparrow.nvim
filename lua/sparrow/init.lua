@@ -7,6 +7,7 @@ end, {
   desc = "Show sparrow log.",
 })
 
+local command = require("sparrow.command")
 local config = require("sparrow.config")
 local diff = require("sparrow.diff")
 local git = require("sparrow.git")
@@ -15,6 +16,66 @@ local rule = require("sparrow.rule")
 local terminal = require("sparrow.terminal")
 local trans = require("sparrow.trans")
 
+function M.with_rule_commands(rules, callback)
+  local pre_cmds_group = command.new_group()
+  local post_cmds_group = command.new_group()
+
+  for i = 1, #rules do
+    local r = rules[i]
+    logger.debug("with rule pattern(%s)", logger.to_json(r.pattern))
+
+    local pre_upload_commands = r.pattern.pre_upload_commands
+    if pre_upload_commands ~= nil then
+      logger.debug("add pre upload commands(%s)", logger.to_json(pre_upload_commands))
+      pre_cmds_group:add_commands(pre_upload_commands)
+    end
+
+    local post_upload_commands = r.pattern.post_upload_commands
+    if post_upload_commands ~= nil then
+      logger.debug("add post upload commands(%s)", logger.to_json(post_upload_commands))
+      post_cmds_group:add_commands(post_upload_commands)
+    end
+  end
+
+  local err = pre_cmds_group:execute()
+  if err ~= nil then
+    logger.error("exec pre-upload-commands failed, err:%s", err)
+    return err
+  else
+    logger.debug("exec pre-upload-commands success")
+  end
+
+  err = callback()
+  if err ~= nil then
+    logger.error("exec rule command callback failed, err:%s", err)
+    return err
+  end
+
+  err = post_cmds_group:execute()
+  if err ~= nil then
+    logger.error("exec post-upload-commands failed, err:%s", err)
+    return err
+  else
+    logger.debug("exec post-upload-commands success")
+  end
+
+  return nil
+end
+
+function M.foreach_hosts(hosts, callback)
+  if callback == nil then
+    return
+  end
+
+  if hosts == nil then
+    return
+  end
+
+  for _, h in ipairs(hosts) do
+    callback(h)
+  end
+end
+
 function M.with_hosts(callback)
   local function init_hosts(cur_hosts)
     if cur_hosts == nil then
@@ -22,100 +83,134 @@ function M.with_hosts(callback)
     end
 
     host.set_cur_hosts(cur_hosts)
-    callback()
+    callback(cur_hosts)
   end
-  local cur_host = host.get_cur_hosts()
-  if cur_host == nil then
+  local cur_hosts = host.get_cur_hosts()
+  if cur_hosts == nil then
     M.auto_refresh_hosts()
     host.select_hosts(init_hosts)
   else
-    callback()
+    callback(cur_hosts)
   end
 end
 
-function M.with_rule(buf, rule_opts, callback)
-  local cur_rule = rule.get_buf_rule(buf)
+function M.with_hosts_and_foreach(callback)
+  M.with_hosts(function(cur_hosts)
+    M.foreach_hosts(cur_hosts, callback)
+  end)
+end
+
+function M.with_buf_rule(bufnr, rule_opts, callback)
+  local cur_rule = rule.get_buf_rule(bufnr)
   if cur_rule == nil then
-    rule.gen_buf_rule(buf, rule_opts, function(buf_rule)
+    rule.gen_buf_rule(bufnr, rule_opts, function(buf_rule)
       if buf_rule == nil then
         return
       end
-      rule.set_buf_rule(buf_rule)
-      callback()
+      rule.set_buf_rule(bufnr, buf_rule)
+      callback(buf_rule)
     end)
   else
-    callback()
+    callback(cur_rule)
   end
 end
 
-function M.upload_to_hosts_by_rule(cur_rule, cur_hosts)
-  for _, cur_host in ipairs(cur_hosts) do
-    trans.upload(cur_host, cur_rule)
+function M.with_bufs_rule(bufnos, rule_opts, callback)
+  for i = 1, #bufnos do
+    M.with_buf_rule(bufnos[i], rule_opts, callback)
   end
 end
 
-function M.upload_buf_to_cur_hosts(buf)
-  local cur_hosts = host.get_cur_hosts()
-  local cur_rule = rule.get_buf_rule(buf)
-
-  M.upload_to_hosts_by_rule(cur_rule, cur_hosts)
-end
-
-function M.with_hosts_and_buf_rule(buf, rule_opts, callback)
-  M.with_hosts(function()
-    M.with_rule(buf, rule_opts, callback)
-  end)
-end
-
-function M.upload_buf(buf, rule_opts)
-  M.with_hosts_and_buf_rule(buf, rule_opts, function()
-    M.upload_buf_to_cur_hosts(buf)
-  end)
-end
-
-function M.download_buf(buf, rule_opts)
-  M.with_hosts_and_buf_rule(buf, rule_opts, function()
-    local cur_host = host.get_only_one_cur_host()
-    local buf_rule = rule.get_buf_rule(buf)
-
-    trans.download(cur_host, buf_rule, function(file_path)
-      local buf_path = vim.api.nvim_buf_get_name(buf)
-
-      assert(file_path == buf_path)
-
-      if buf_path ~= "" and vim.fn.filereadable(buf_path) == 1 then
-        vim.api.nvim_buf_call(buf, function()
-          vim.cmd("edit!")
-          local msg = string.format("Buffer reload from file(%s)", buf_path)
-          vim.notify(msg, vim.log.levels.INFO)
+function M.with_all_bufs_rule(rule_opts, callback)
+  local rules = {}
+  for _, bufnr in ipairs(vim.api.nvim_list_bufs()) do
+    if vim.api.nvim_buf_is_loaded(bufnr) and vim.api.nvim_buf_get_name(bufnr) ~= "" then
+      local cur_rule = rule.get_buf_rule(bufnr)
+      if cur_rule == nil then
+        rule.gen_buf_rule(bufnr, rule_opts, function(buf_rule)
+          if buf_rule == nil then
+            return
+          end
+          rule.set_buf_rule(bufnr, buf_rule)
+          table.insert(rules, buf_rule)
         end)
+      else
+        table.insert(rules, cur_rule)
       end
+    end
+  end
+
+  callback(rules)
+end
+
+function M.upload_buf(bufnr, rule_opts)
+  M.with_hosts_and_foreach(function(h)
+    local rules = {}
+
+    M.with_buf_rule(bufnr, rule_opts, function(cur_rule)
+      local pattern = cur_rule["pattern"]
+
+      command.set_commands_remote(pattern.pre_upload_commands, h)
+      command.set_commands_remote(pattern.post_upload_commands, h)
+      table.insert(rules, cur_rule)
+    end)
+
+    M.with_rule_commands(rules, function()
+      for _, r in ipairs(rules) do
+        trans.upload(h, r)
+      end
+    end)
+  end)
+end
+
+function M.download_buf(bufnr, rule_opts)
+  M.with_buf_rule(bufnr, rule_opts, function(r)
+    M.with_hosts(function(cur_hosts)
+      local cur_host = host.get_only_one_cur_host(cur_hosts)
+
+      trans.download(cur_host, r, function(file_path)
+        local buf_path = vim.api.nvim_buf_get_name(bufnr)
+
+        assert(file_path == buf_path)
+
+        if buf_path ~= "" and vim.fn.filereadable(buf_path) == 1 then
+          vim.api.nvim_buf_call(bufnr, function()
+            vim.cmd("edit!")
+            local msg = string.format("Buffer reload from file(%s)", buf_path)
+            vim.notify(msg, vim.log.levels.INFO)
+          end)
+        end
+      end)
     end)
   end)
 end
 
 function M.upload_all_buf()
-  local file_buffers = {}
-  for _, bufnr in ipairs(vim.api.nvim_list_bufs()) do
-    if vim.api.nvim_buf_is_loaded(bufnr) and vim.api.nvim_buf_get_name(bufnr) ~= "" then
-      table.insert(file_buffers, bufnr)
-    end
-  end
+  local rule_opts = M.one_rule_opts()
 
-  for _, bufnr in ipairs(file_buffers) do
-    M.upload_buf(bufnr)
-  end
+  local rules = {}
+  M.with_all_bufs_rule(rule_opts, function(rs)
+    rules = rs
+  end)
+
+  M.with_hosts_and_foreach(function(h)
+    M.with_rule_commands(rules, function()
+      for _, r in ipairs(rules) do
+        trans.upload(h, r)
+      end
+    end)
+  end)
 end
 
 function M.upload_repo()
-  M.with_hosts(function()
-    local cur_hosts = host.get_cur_hosts()
+  M.with_hosts_and_foreach(function(h)
     local rules = rule.gen_rules_by_patterns()
-
-    for i = 1, #rules do
-      logger.info("exec trans rule(%s) to hosts(%s)", logger.to_json(rules[i]), logger.to_json(cur_hosts))
-      M.upload_to_hosts_by_rule(rules[i], cur_hosts)
-    end
+    M.with_rule_commands(rules, function()
+      for i = 1, #rules do
+        logger.info("exec trans rule(%s) to hosts(%s)", logger.to_json(rules[i]), logger.to_json(h))
+        trans.upload(h, rules[i])
+      end
+    end)
   end)
 end
 
@@ -173,6 +268,23 @@ function M.disable_upload_sync_when_save()
   vim.notify("Auto upload when saving disabled!")
 end
 
+function M.run_commands()
+  command.select_custom_command(function(cs)
+    for _, c in ipairs(cs) do
+      if c["run_location"] == "remote" then
+        M.with_hosts_and_foreach(function(h)
+          logger.debug("run command(%s) on host(%s)", logger.to_json(c), logger.to_json(h))
+
+          c["remote"] = h
+          command.run_command(c)
+        end)
+      else
+        command.run_command(c)
+      end
+    end
+  end)
+end
+
 function M.set_cur_hosts_with_confirm()
   local cur_host = host.get_cur_hosts()
 
@@ -204,10 +316,6 @@ function M.set_cur_hosts_with_confirm()
   end
 end
 
-function M.diff_buf_file()
-  M.with_hosts_and_buf_rule(function() end)
-end
-
 function M.one_rule_opts()
   return {
     no_new_pattern = true,
@@ -229,16 +337,21 @@ function M.upload_change_files_against_index()
     return
   end
 
-  M.with_hosts(function()
-    local cur_hosts = host.get_cur_hosts()
+  local rules = {}
+  local rule_opts = M.one_rule_opts()
+  for _, f in ipairs(files) do
+    local file_path = f.path
+    rule.gen_file_rule(file_path, rule_opts, function(r)
+      table.insert(rules, r)
+    end)
+  end
 
-    local rule_opts = M.one_rule_opts()
-    for _, f in ipairs(files) do
-      local file_path = f.path
-      rule.gen_file_rule(file_path, rule_opts, function(cur_rule)
-        M.upload_to_hosts_by_rule(cur_rule, cur_hosts)
-      end)
-    end
+  M.with_hosts_and_foreach(function(h)
+    M.with_rule_commands(rules, function()
+      for _, r in ipairs(rules) do
+        trans.upload(h, r)
+      end
+    end)
   end)
 end
 
@@ -292,7 +405,7 @@ function M.setup(opts)
   })
 
   vim.api.nvim_create_user_command("SparrowShowBufferRule", function()
-    M.with_rule(0, {}, function()
+    M.with_buf_rule(0, {}, function()
       rule.show_buf_rule(0)
     end)
   end, {
@@ -398,8 +511,10 @@ function M.setup(opts)
     end,
   })
   vim.api.nvim_create_user_command("SparrowBufferDiff", function()
-    M.with_hosts_and_buf_rule(0, {}, function()
-      diff.diff_buf(0)
+    M.with_hosts(function(cur_hosts)
+      M.with_buf_rule(0, {}, function()
+        diff.diff_buf(0, cur_hosts)
+      end)
     end)
   end, {
     desc = "Diff buffer file and remote.",
@@ -421,6 +536,12 @@ function M.setup(opts)
     M.close_cur_hosts_terminal()
   end, {
     desc = "Upload files against index to destination host.",
+  })
+
+  vim.api.nvim_create_user_command("SparrowRunCommands", function()
+    M.run_commands()
+  end, {
+    desc = "Run custom command in the repo.",
   })
 end
 
