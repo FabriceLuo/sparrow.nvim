@@ -8,6 +8,7 @@ end, {
 })
 
 local command = require("sparrow.command")
+local compat = require("sparrow.compatibility")
 local config = require("sparrow.config")
 local diff = require("sparrow.diff")
 local git = require("sparrow.git")
@@ -76,17 +77,40 @@ function M.foreach_hosts(hosts, callback)
   end
 end
 
-function M.with_hosts(callback)
+function M.with_hosts(callback, reselect)
   local function init_hosts(cur_hosts)
     if cur_hosts == nil then
       return
     end
 
-    host.set_cur_hosts(cur_hosts)
+    local compat_hosts = {}
+    local repo_labels = config.get_labels()
+    for _, cur_host in ipairs(cur_hosts) do
+      local host_labels = cur_host["labels"] or {}
+      if not compat.is_label_match(host_labels, repo_labels) then
+        local msg = string.format(
+          "Host labels(%s) is not match repo labels(%s), ignore host.",
+          logger.to_json(host_labels),
+          logger.to_json(repo_labels)
+        )
+        logger.error(msg)
+        vim.notify(msg, vim.log.levels.ERROR)
+      else
+        table.insert(compat_hosts, cur_host)
+      end
+    end
+    if #compat_hosts == 0 then
+      logger.error("no compatible hosts is found from cur hosts(%s)", logger.to_json(cur_hosts))
+      local msg = string.format("No compatible hosts is selected, retry select!")
+      vim.notify(msg, vim.log.levels.ERROR)
+      return
+    end
+
+    host.set_cur_hosts(compat_hosts)
     callback(cur_hosts)
   end
   local cur_hosts = host.get_cur_hosts()
-  if cur_hosts == nil then
+  if reselect or cur_hosts == nil then
     M.auto_refresh_hosts()
     host.select_hosts(init_hosts)
   else
@@ -214,22 +238,11 @@ function M.upload_repo()
   end)
 end
 
-function M.set_cur_hosts()
-  M.auto_refresh_hosts()
-
-  host.select_hosts(function(selected_hosts)
-    if selected_hosts == nil then
-      return
-    end
-    host.set_cur_hosts(selected_hosts)
-  end)
-end
-
 function M.save_cur_hosts()
   local cur_hosts = host.get_cur_hosts()
   if cur_hosts == nil then
     logger.warn("cur host is not found, ignore save")
-    vim.notify("Cur host is not found, please run:SparrowSetCurHost first!", vim.log.levels.WARN)
+    vim.notify("Cur host is not found, please run:SparrowCurHostsSet first!", vim.log.levels.WARN)
     return
   end
 
@@ -286,9 +299,11 @@ function M.run_commands()
 end
 
 function M.set_cur_hosts_with_confirm()
-  local cur_host = host.get_cur_hosts()
+  local cur_hosts = host.get_cur_hosts()
 
-  if cur_host ~= nil then
+  if cur_hosts ~= nil and #cur_hosts ~= 0 then
+    -- TODO: multiple select
+    local cur_host = cur_hosts[1]
     local msg = string.format(
       [[
     Current sync destination host:
@@ -296,23 +311,23 @@ function M.set_cur_hosts_with_confirm()
             Port: %s
         UserName: %s
         Password: %s
-            Type: %s
+          Labels: %s
     Do you change it?
     ]],
       cur_host.host,
       cur_host.port,
       cur_host.userName,
       cur_host.password,
-      cur_host.type
+      logger.to_json(cur_host.labels)
     )
     vim.ui.select({ "Yes", "No" }, { prompt = msg }, function(choice)
       if choice == "No" then
         return
       end
-      M.set_cur_hosts()
+      M.with_hosts(function() end, true)
     end)
   else
-    M.set_cur_hosts()
+    M.with_hosts(function() end, true)
   end
 end
 
