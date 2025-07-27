@@ -9,14 +9,14 @@ local M = {
           "password": "",
           "host": "",
           "port": "",
-          "type": "",
+          "labels": [],
       },
       {
           "username": "",
           "password": "",
           "host": "",
           "port": "",
-          "type": "",
+          "labels": [],
       },
   ]
 
@@ -84,7 +84,13 @@ function M.decode_autossh_config_hosts(autossh_config)
       password = v["password"],
       host = ks[2],
       port = ks[3],
+      labels = {},
     }
+
+    if v["labels"] ~= nil then
+      host["labels"] = vim.split(v["labels"], ",")
+    end
+
     table.insert(hosts, host)
   end
 
@@ -152,13 +158,13 @@ function M.select_hosts(callback)
         title = "Host details",
         define_preview = function(self, entry, _)
           local value = entry.value
-          local type = entry.type or ""
+          local labels = logger.to_json(value.labels)
           local lines = {
             "Host: " .. value.host,
             "Port: " .. value.port,
             "UserName: " .. value.username,
             "Password: " .. value.password,
-            "Type: " .. type,
+            "Labels: " .. labels,
           }
           vim.api.nvim_buf_set_lines(self.state.bufnr, 0, -1, false, lines)
         end,
@@ -193,7 +199,7 @@ function M.show_cur_hosts()
       table.insert(lines, string.format("------------Host %s-------------", i))
       table.insert(lines, "    Host:\t" .. cur_host["host"])
       table.insert(lines, "    Port:\t" .. cur_host["port"])
-      table.insert(lines, "    Type:\t" .. (cur_host["type"] or ""))
+      table.insert(lines, "  Labels:\t" .. logger.to_json(cur_host["labels"]))
       table.insert(lines, "UserName:\t" .. cur_host["username"])
       table.insert(lines, "Password:\t" .. cur_host["password"])
     end

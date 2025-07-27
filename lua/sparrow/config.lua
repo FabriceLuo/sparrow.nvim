@@ -99,6 +99,10 @@ function M.get_commands()
   return M.config["commands"]
 end
 
+function M.get_labels()
+  return M.config["labels"]
+end
+
 function M.init()
   M.load()
 end
