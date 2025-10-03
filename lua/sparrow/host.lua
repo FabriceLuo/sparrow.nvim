@@ -104,6 +104,11 @@ end
 function M.load_cur_hosts()
   local cfg = config.load()
 
+  if cfg == nil then
+    logger.error("load config failed")
+    return
+  end
+
   if config["cur_hosts"] ~= nil then
     logger.info("load cur hosts(%s) from config", logger.to_json(cfg["cur_hosts"]))
   end

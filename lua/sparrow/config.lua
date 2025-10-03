@@ -103,6 +103,16 @@ function M.get_labels()
   return M.config["labels"]
 end
 
+function M.get_backup_config()
+  return M.config["backup"]
+end
+
+function M.set_backup_config(config)
+  M.config["backup"] = config
+
+  M.save(M.config)
+end
+
 function M.init()
   M.load()
 end

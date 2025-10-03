@@ -16,6 +16,7 @@ local host = require("sparrow.host")
 local rule = require("sparrow.rule")
 local terminal = require("sparrow.terminal")
 local trans = require("sparrow.trans")
+local backup = require("sparrow.backup")
 
 function M.with_rule_commands(rules, callback)
   local pre_cmds_group = command.new_group()
@@ -387,6 +388,20 @@ function M.disable_auto_refresh_hosts()
   vim.notify("Auto reresh host list disabled.")
 end
 
+function M.upload_restore()
+  M.with_hosts(function (cur_hosts)
+    -- FIXME: support multi hosts
+    local cur_host = cur_hosts[1]
+    logger.info("restore backup on hosts:%s", logger.to_json(cur_host))
+    backup.select_and_restore(cur_host)
+  end,
+  false)
+end
+
+function M.download_restore()
+    backup.select_and_restore()
+end
+
 function M.setup(opts)
   logger.info("setup sparrow with opts:%s", logger.to_json(opts))
 
@@ -557,6 +572,102 @@ function M.setup(opts)
     M.run_commands()
   end, {
     desc = "Run custom command in the repo.",
+  })
+
+  vim.api.nvim_create_user_command("SparrowUploadBackupEnable", function()
+    backup.enable_remote_backup(true)
+  end, {
+    desc = "Enable backup remote files automatically when upload.",
+  })
+  vim.api.nvim_create_user_command("SparrowUploadBackupDisable", function()
+    backup.enable_remote_backup(false)
+  end, {
+    desc = "Disable backup remote files automatically when upload.",
+  })
+  vim.api.nvim_create_user_command("SparrowUploadBackupStatus", function()
+    if backup.is_remote_backup_enable() then
+      vim.notify("Remote backup is enabled")
+    else
+      vim.notify("Remote backup is disenabled")
+    end
+  end, {
+    desc = "Swith status of backuping remote files automatically when upload.",
+  })
+  vim.api.nvim_create_user_command("SparrowUploadBackupToggle", function()
+    if backup.is_remote_backup_enable() then
+      backup.enable_remote_backup(false)
+    else
+      backup.enable_remote_backup(true)
+    end
+  end, {
+    desc = "Enable/Disable backup remote files automatically when download.",
+  })
+  vim.api.nvim_create_user_command("SparrowUploadRestore", function()
+    M.upload_restore()
+  end, {
+    desc = "Restore backup of remote files.",
+  })
+  vim.api.nvim_create_user_command("SparrowDownloadBackupEnable", function()
+    backup.enable_local_backup(true)
+  end, {
+    desc = "Enable backup local files automatically when download.",
+  })
+  vim.api.nvim_create_user_command("SparrowDownloadBackupDisable", function()
+    backup.enable_local_backup(false)
+  end, {
+    desc = "Disable backup local files automatically when download.",
+  })
+  vim.api.nvim_create_user_command("SparrowDownloadBackupStatus", function()
+    if backup.is_local_backup_enable() then
+      vim.notify("Local backup is enabled")
+    else
+      vim.notify("Local backup is disenabled")
+    end
+  end, {
+    desc = "Swith status of backuping local files automatically when download.",
+  })
+  vim.api.nvim_create_user_command("SparrowDownloadBackupToggle", function()
+    if backup.is_local_backup_enable() then
+      backup.enable_local_backup(false)
+    else
+      backup.enable_local_backup(true)
+    end
+  end, {
+    desc = "Enable/Disable backup local files automatically when download.",
+  })
+  vim.api.nvim_create_user_command("SparrowDownloadRestore", function()
+    M.download_restore()
+  end, {
+    desc = "Restore backup of local files.",
+  })
+  vim.api.nvim_create_user_command("SparrowBackupEnable", function()
+    backup.enable_local_backup(true)
+    backup.enable_remote_backup(true)
+  end, {
+    desc = "Enable backup local/remote files automatically when download/upload.",
+  })
+  vim.api.nvim_create_user_command("SparrowBackupDisable", function()
+    backup.enable_local_backup(false)
+    backup.enable_remote_backup(false)
+  end, {
+    desc = "Disable backup local/remote files automatically when download/upload.",
+  })
+  vim.api.nvim_create_user_command("SparrowBackupStatus", function()
+    local local_enable = backup.is_local_backup_enable()
+    local remote_enable = backup.is_remote_backup_enable()
+    local msg = string.format("Backup enable status, local:%s, remote:%s", local_enable, remote_enable)
+    vim.notify(msg, vim.log.levels.INFO)
+  end, {
+    desc = "Swith status of backuping local/remote files automatically when download/upload.",
+  })
+  vim.api.nvim_create_user_command("SparrowBackupToggle", function()
+    local local_enable = backup.is_local_backup_enable()
+    backup.enable_local_backup(!local_enable)
+
+    local remote_enable = backup.is_remote_backup_enable()
+    backup.enable_remote_backup(!remote_enable)
+  end, {
+    desc = "Enable/Disable backup local/remote files automatically when download/upload.",
   })
 end
 

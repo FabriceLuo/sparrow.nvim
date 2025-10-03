@@ -3,6 +3,16 @@
   "platform": "Debian",
   "version": "1.0.0",
   "type": "Linux",
+  "backup": {
+    "local": {
+      "enable": true,
+      "directory": ""
+    },
+    "remote": {
+      "enable": true,
+      "directory": ""
+    }
+  },
   "commands": [
     {
       "name": "create-remote-makefile-touch-post",

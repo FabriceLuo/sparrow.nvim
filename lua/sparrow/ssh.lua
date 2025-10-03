@@ -53,10 +53,9 @@ function M.exec_on_host(command, run_host)
   local exit_code, output = M.ssh_error_retry(cmdline, run_host)
   if exit_code ~= 0 then
     logger.error("exec ssh command(%s) failed, err:%s", cmdline, output)
-    return output
   end
 
-  return nil
+  return exit_code, output
 end
 
 return M

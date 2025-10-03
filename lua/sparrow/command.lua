@@ -15,27 +15,32 @@ local M = {}
 local function run_local_command(command)
   logger.info("run local command(%s)", logger.to_json(command))
 
-  local code, err = vim.fn.system(command.cmdline)
-  if code ~= 0 then
-    logger.error("run system(%s) failed, err:%s", command.cmdline, err)
-    return err
+  local output = vim.fn.system(command.cmdline)
+  local exit_code = vim.v.shell_error
+  if exit_code ~= 0 then
+    logger.error("run system(%s) failed, err:%s", command.cmdline, output)
+  else
+    logger.info("run system(%s) success", command.cmdline)
   end
-  logger.info("run system(%s) success", command.cmdline)
-
-  return nil
+  return exit_code, output
 end
 
 local function run_remote_command(command)
   logger.info("run remote command(%s)", logger.to_json(command))
 
-  local err = ssh.exec_on_host(command.cmdline, command.remote)
-  if err ~= nil then
-    logger.error("exec command(%s) on remote(%s) failed, err:%s", command.cmdline, logger.to_json(command.remote), err)
-    return err
+  local exit_code, output = ssh.exec_on_host(command.cmdline, command.remote)
+  if exit_code ~= 0 then
+    logger.error(
+      "exec command(%s) on remote(%s) failed, err:%s",
+      command.cmdline,
+      logger.to_json(command.remote),
+      output
+    )
+  else
+    logger.info("exec command(%s) on remote(%s) success", command.cmdline, logger.to_json(command.remote))
   end
 
-  logger.info("exec command(%s) on remote(%s) success", command.cmdline, logger.to_json(command.remote))
-  return nil
+  return exit_code, output
 end
 
 function M.run_command(c)
@@ -45,7 +50,7 @@ function M.run_command(c)
     return run_remote_command(c)
   else
     logger.error("run location(%s) is not support", c["run_location"])
-    return string.format("Run location(%s) is not support", c["run_location"])
+    return -1, string.format("Run location(%s) is not support", c["run_location"])
   end
 end
 
@@ -55,13 +60,20 @@ function M.run_commands(cs)
   end
 end
 
+function M.set_command_remote(c, remote)
+  if c == nil then
+    return
+  end
+  c["remote"] = remote
+end
+
 function M.set_commands_remote(cs, remote)
   if cs == nil then
     return
   end
 
   for _, c in ipairs(cs) do
-    c["remote"] = remote
+    M.set_command_remote(c, remote)
   end
 end
 
